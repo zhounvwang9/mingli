@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 哲理短视频生成器</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;600&display=swap');
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --card: #1a1a26;
+      --border: #2a2a3a;
+      --accent: #c8a96e;
+      --accent2: #8b6fae;
+      --text: #e8e4dc;
+      --muted: #7a7588;
+      --success: #4caf72;
+      --error: #e05a5a;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Serif SC', 'SimSun', serif;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .bg-glow {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse at 20% 30%, rgba(139,111,174,0.07) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 75%, rgba(200,169,110,0.06) 0%, transparent 55%);
+    }
+
+    .container {
+      position: relative; z-index: 1;
+      max-width: 860px; margin: 0 auto;
+      padding: 48px 24px 100px;
+    }
+
+    /* ── 标题 ── */
+    .header { text-align: center; margin-bottom: 52px; }
+    .badge {
+      display: inline-block;
+      font-size: 10px; letter-spacing: 4px;
+      color: var(--accent); border: 1px solid rgba(200,169,110,0.3);
+      padding: 4px 16px; border-radius: 20px; margin-bottom: 22px;
+    }
+    h1 {
+      font-size: clamp(26px, 5vw, 40px); font-weight: 300; letter-spacing: 8px;
+      background: linear-gradient(135deg, var(--accent), #f0ddb0, var(--accent2));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text; margin-bottom: 14px; line-height: 1.4;
+    }
+    .subtitle { color: var(--muted); font-size: 13px; letter-spacing: 2px; }
+
+    /* ── 卡片 ── */
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 36px; margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+      color: var(--accent); margin-bottom: 26px;
+      display: flex; align-items: center; gap: 12px;
+    }
+    .card-title::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(to right, rgba(200,169,110,0.25), transparent);
+    }
+
+    /* ── 流程展示 ── */
+    .pipeline {
+      display: flex; align-items: center; flex-wrap: wrap;
+      gap: 0; justify-content: center;
+    }
+    .pipe-step { text-align: center; padding: 10px 16px; }
+    .pipe-step .p-icon { font-size: 22px; margin-bottom: 6px; }
+    .pipe-step .p-name { font-size: 11px; letter-spacing: 1px; color: var(--muted); line-height: 1.5; }
+    .pipe-arrow { color: rgba(200,169,110,0.4); font-size: 20px; padding-bottom: 22px; }
+
+    /* ── 输入 ── */
+    .input-group { margin-bottom: 18px; }
+    label { display: block; font-size: 11px; letter-spacing: 2px; color: var(--muted); margin-bottom: 8px; }
+    input[type="text"], select {
+      width: 100%; padding: 13px 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: inherit; font-size: 15px; outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus, select:focus { border-color: var(--accent); }
+    input::placeholder { color: var(--muted); }
+
+    .theme-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+    .chip {
+      padding: 5px 14px; border: 1px solid var(--border); border-radius: 20px;
+      font-size: 13px; cursor: pointer; color: var(--muted);
+      background: transparent; font-family: inherit; transition: all 0.2s;
+    }
+    .chip:hover { border-color: var(--accent); color: var(--accent); background: rgba(200,169,110,0.07); }
+    .chip.active { border-color: var(--accent); color: var(--accent); background: rgba(200,169,110,0.1); }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    @media(max-width:500px){ .row2 { grid-template-columns: 1fr; } }
+
+    /* ── 提示 ── */
+    .tip {
+      background: rgba(200,169,110,0.05); border: 1px solid rgba(200,169,110,0.18);
+      border-radius: 10px; padding: 13px 16px;
+      font-size: 12px; color: var(--muted); line-height: 1.8;
+      margin-bottom: 20px;
+    }
+    .tip strong { color: var(--accent); }
+
+    /* ── 按钮 ── */
+    .btn-gen {
+      width: 100%; padding: 17px;
+      background: linear-gradient(135deg, #c8a96e, #9c7a3c);
+      border: none; border-radius: 12px;
+      color: #0a0a0f; font-family: inherit;
+      font-size: 15px; font-weight: 600; letter-spacing: 4px;
+      cursor: pointer; transition: all 0.25s;
+    }
+    .btn-gen:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+    /* ── 进度 ── */
+    .progress-wrap { background: var(--surface); border-radius: 4px; height: 3px; margin-bottom: 28px; overflow: hidden; }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(to right, var(--accent2), var(--accent));
+      border-radius: 4px; transition: width 0.6s ease;
+    }
+
+    .steps { display: flex; flex-direction: column; gap: 2px; }
+    .step {
+      display: flex; gap: 14px; align-items: flex-start;
+      padding: 12px 14px; border-radius: 10px; transition: background 0.2s;
+    }
+    .step.active { background: rgba(200,169,110,0.06); }
+    .step.done { background: rgba(76,175,114,0.05); }
+
+    .s-icon {
+      width: 28px; height: 28px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; flex-shrink: 0; margin-top: 2px;
+      border: 1px solid var(--border); color: var(--muted);
+    }
+    .step.active .s-icon { border-color: var(--accent); color: var(--accent); animation: glow 1.4s infinite; }
+    .step.done .s-icon { border-color: var(--success); color: var(--success); background: rgba(76,175,114,0.1); }
+    @keyframes glow {
+      0%,100%{ box-shadow: 0 0 0 0 rgba(200,169,110,0.35); }
+      50%{ box-shadow: 0 0 0 5px rgba(200,169,110,0); }
+    }
+
+    .s-label { font-size: 11px; letter-spacing: 1px; color: var(--muted); margin-bottom: 4px; }
+    .s-detail { font-size: 14px; line-height: 1.8; color: var(--text); white-space: pre-line; }
+
+    /* ── 结果 ── */
+    .sentences { display: flex; flex-direction: column; gap: 0; margin-bottom: 28px; }
+    .sent {
+      padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+      font-size: 17px; line-height: 1.8; letter-spacing: 1px;
+    }
+    .sent:last-child { border-bottom: none; }
+    .sent-n { color: var(--accent); font-size: 11px; margin-right: 10px; }
+
+    .btn-dl {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 16px;
+      background: linear-gradient(135deg, var(--accent2), #6b5090);
+      border: none; border-radius: 12px; color: white;
+      font-family: inherit; font-size: 14px; letter-spacing: 3px;
+      cursor: pointer; transition: filter 0.2s;
+    }
+    .btn-dl:hover { filter: brightness(1.15); }
+
+    /* ── 多选主题标签 ── */
+    .chip.multi-active {
+      border-color: var(--accent); color: var(--accent);
+      background: rgba(200,169,110,0.13);
+      box-shadow: 0 0 0 1px rgba(200,169,110,0.25);
+    }
+
+    /* ── 模式切换 ── */
+    .mode-toggle {
+      display: flex; gap: 0; margin-bottom: 22px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 4px; width: fit-content;
+    }
+    .mode-btn {
+      padding: 8px 22px; border-radius: 7px; border: none;
+      font-family: inherit; font-size: 12px; letter-spacing: 2px;
+      cursor: pointer; transition: all 0.2s;
+      color: var(--muted); background: transparent;
+    }
+    .mode-btn.active {
+      background: var(--card); color: var(--accent);
+      box-shadow: 0 1px 6px rgba(0,0,0,0.4);
+    }
+
+    /* ── 自定义文案框 ── */
+    textarea {
+      width: 100%; padding: 14px 16px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text);
+      font-family: inherit; font-size: 14px; line-height: 1.9;
+      outline: none; resize: vertical; min-height: 160px;
+      transition: border-color 0.2s;
+    }
+    textarea:focus { border-color: var(--accent); }
+    textarea::placeholder { color: var(--muted); }
+    .paste-hint {
+      font-size: 11px; color: var(--muted); margin-top: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── 框架卡片 ── */
+    .framework-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+      margin-top: 2px;
+    }
+    @media(max-width:520px){ .framework-grid { grid-template-columns: repeat(2,1fr); } }
+    .fw-card {
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 12px 14px; cursor: pointer; transition: all 0.2s;
+      background: transparent;
+    }
+    .fw-card:hover { border-color: rgba(200,169,110,0.4); background: rgba(200,169,110,0.04); }
+    .fw-card.selected { border-color: var(--accent); background: rgba(200,169,110,0.08); }
+    .fw-card .fw-name { font-size: 13px; color: var(--text); margin-bottom: 4px; }
+    .fw-card .fw-desc { font-size: 11px; color: var(--muted); line-height: 1.5; }
+  </style>
+</head>
+<body>
+<div class="bg-glow"></div>
+<div class="container">
+
+  <!-- 标题 -->
+  <div class="header">
+    <div class="badge">AI VIDEO AGENT · PREVIEW</div>
+    <h1>哲理短视频生成器</h1>
+    <p class="subtitle">复刻「太阳师兄」风格 · 命运感 · 水墨画面 · 磁性配音</p>
+  </div>
+
+  <!-- 流程 -->
+  <div class="card">
+    <div class="card-title">生成流程</div>
+    <div class="pipeline">
+      <div class="pipe-step"><div class="p-icon">✍️</div><div class="p-name">DeepSeek<br>文案</div></div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-step"><div class="p-icon">🖼️</div><div class="p-name">FLUX.1<br>画面</div></div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-step"><div class="p-icon">🎬</div><div class="p-name">可灵 Kling<br>视频</div></div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-step"><div class="p-icon">🎙️</div><div class="p-name">火山TTS<br>配音</div></div>
+      <div class="pipe-arrow">›</div>
+      <div class="pipe-step"><div class="p-icon">🎞️</div><div class="p-name">合成<br>成片</div></div>
+    </div>
+  </div>
+
+  <!-- 输入区 -->
+  <div class="card" id="input-card">
+    <div class="card-title">创作配置</div>
+
+    <!-- 文案来源切换 -->
+    <div class="mode-toggle">
+      <button class="mode-btn active" id="mode-ai" onclick="switchMode('ai')">AI 生成</button>
+      <button class="mode-btn" id="mode-paste" onclick="switchMode('paste')">自定义粘贴</button>
+    </div>
+
+    <!-- AI 生成模式 -->
+    <div id="ai-section">
+      <div class="input-group">
+        <label>主题词（可多选，组合生成）</label>
+        <input type="text" id="theme" placeholder="点击标签快选，或直接输入..." value="命运" readonly
+               style="cursor:default; margin-bottom:10px" />
+        <div class="theme-chips" id="theme-chips">
+          <button class="chip multi-active" onclick="toggleTheme(this,'命运')">命运</button>
+          <button class="chip" onclick="toggleTheme(this,'孤独')">孤独</button>
+          <button class="chip" onclick="toggleTheme(this,'时间')">时间</button>
+          <button class="chip" onclick="toggleTheme(this,'选择')">选择</button>
+          <button class="chip" onclick="toggleTheme(this,'相遇')">相遇</button>
+          <button class="chip" onclick="toggleTheme(this,'成长')">成长</button>
+          <button class="chip" onclick="toggleTheme(this,'告别')">告别</button>
+          <button class="chip" onclick="toggleTheme(this,'失去')">失去</button>
+          <button class="chip" onclick="toggleTheme(this,'坚持')">坚持</button>
+          <button class="chip" onclick="toggleTheme(this,'放下')">放下</button>
+          <button class="chip" onclick="toggleTheme(this,'真实')">真实</button>
+          <button class="chip" onclick="toggleTheme(this,'等待')">等待</button>
+        </div>
+      </div>
+
+      <div class="input-group">
+        <label>文案框架结构</label>
+        <div class="framework-grid" id="fw-grid">
+          <div class="fw-card selected" onclick="selectFw(this,'fate')">
+            <div class="fw-name">宿命感</div>
+            <div class="fw-desc">命运感强，充满必然性，如「命运会逼你」</div>
+          </div>
+          <div class="fw-card" onclick="selectFw(this,'progressive')">
+            <div class="fw-name">递进式</div>
+            <div class="fw-desc">层层深入，从浅入深，情绪不断升温</div>
+          </div>
+          <div class="fw-card" onclick="selectFw(this,'contrast')">
+            <div class="fw-name">对比式</div>
+            <div class="fw-desc">前后反差，「你以为…其实…」结构</div>
+          </div>
+          <div class="fw-card" onclick="selectFw(this,'qa')">
+            <div class="fw-name">问答式</div>
+            <div class="fw-desc">先问后答，引发共鸣再给出答案</div>
+          </div>
+          <div class="fw-card" onclick="selectFw(this,'turn')">
+            <div class="fw-name">转折式</div>
+            <div class="fw-desc">先抑后扬，低谷后出现希望与转机</div>
+          </div>
+          <div class="fw-card" onclick="selectFw(this,'quote')">
+            <div class="fw-name">语录式</div>
+            <div class="fw-desc">金句连排，每句独立成篇，可截图传播</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 自定义粘贴模式 -->
+    <div id="paste-section" style="display:none">
+      <div class="input-group">
+        <label>粘贴你的文案（每行一句）</label>
+        <textarea id="custom-text"
+          placeholder="每行输入一句话，例如：
+命运会逼着你去走它为你铺好的路
+你以为是自己在选择，其实是被选择
+那些绕弯路的日子，也是路
+某些痛苦，只是在为更大的幸福腾地方
+时间不会说谎，它只会慢慢让你明白"></textarea>
+        <div class="paste-hint">每行一句 · 建议 5-8 句 · 每句 15-25 字效果最佳</div>
+      </div>
+    </div>
+
+    <div class="row2" style="margin-top:4px">
+      <div class="input-group">
+        <label>文案句数</label>
+        <select id="count">
+          <option value="5">5 句（约 25s）</option>
+          <option value="6">6 句（约 30s）</option>
+          <option value="7" selected>7 句（约 35s）</option>
+          <option value="8">8 句（约 40s）</option>
+        </select>
+      </div>
+      <div class="input-group">
+        <label>每段视频时长</label>
+        <select id="dur">
+          <option value="5" selected>5 秒/段</option>
+          <option value="10">10 秒/段</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="tip">
+      <strong>费用参考：</strong>每条视频约 <strong>2.5 元</strong>，耗时约 <strong>15 分钟</strong>（主要等待可灵视频生成）。<br>
+      填入 <strong>config.py</strong> 中的 API Key 后即可正式运行。
+    </div>
+
+    <button class="btn-gen" onclick="simulateProgress()">开始生成视频</button>
+  </div>
+
+  <!-- 进度区（默认隐藏，点按钮后模拟显示）-->
+  <div class="card" id="prog-card" style="display:none">
+    <div class="card-title">生成进度</div>
+
+    <div class="progress-wrap">
+      <div class="progress-fill" id="pbar" style="width:0%"></div>
+    </div>
+
+    <div class="steps" id="steps">
+      <div class="step" id="s1">
+        <div class="s-icon">1</div>
+        <div><div class="s-label">STEP 1 · DEEPSEEK</div><div class="s-detail" id="d1">等待开始...</div></div>
+      </div>
+      <div class="step" id="s2">
+        <div class="s-icon">2</div>
+        <div><div class="s-label">STEP 2 · 图像描述词</div><div class="s-detail" id="d2">等待...</div></div>
+      </div>
+      <div class="step" id="s3">
+        <div class="s-icon">3</div>
+        <div><div class="s-label">STEP 3 · FLUX.1 画面</div><div class="s-detail" id="d3">等待...</div></div>
+      </div>
+      <div class="step" id="s4">
+        <div class="s-icon">4</div>
+        <div><div class="s-label">STEP 4 · 可灵 视频</div><div class="s-detail" id="d4">等待...</div></div>
+      </div>
+      <div class="step" id="s5">
+        <div class="s-icon">5</div>
+        <div><div class="s-label">STEP 5 · 火山TTS 配音</div><div class="s-detail" id="d5">等待...</div></div>
+      </div>
+      <div class="step" id="s6">
+        <div class="s-icon">6</div>
+        <div><div class="s-label">STEP 6 · 视频合成</div><div class="s-detail" id="d6">等待...</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 结果区（默认隐藏）-->
+  <div class="card" id="res-card" style="display:none">
+    <div class="card-title">生成结果</div>
+    <div class="sentences" id="sent-list"></div>
+    <button class="btn-dl">⬇ &nbsp; 下载视频（final.mp4）</button>
+  </div>
+
+</div>
+
+<script>
+  /* ── 多选主题 ── */
+  const selectedThemes = new Set(['命运']);
+
+  function toggleTheme(el, t) {
+    if (selectedThemes.has(t)) {
+      if (selectedThemes.size === 1) return;
+      selectedThemes.delete(t);
+      el.classList.remove('multi-active');
+    } else {
+      selectedThemes.add(t);
+      el.classList.add('multi-active');
+    }
+    document.getElementById('theme').value = [...selectedThemes].join(' · ');
+  }
+
+  /* ── 框架选择 ── */
+  let selectedFw = 'fate';
+  function selectFw(el, fw) {
+    document.querySelectorAll('.fw-card').forEach(c => c.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedFw = fw;
+  }
+
+  /* ── 模式切换 ── */
+  function switchMode(mode) {
+    document.getElementById('mode-ai').classList.toggle('active', mode === 'ai');
+    document.getElementById('mode-paste').classList.toggle('active', mode === 'paste');
+    document.getElementById('ai-section').style.display = mode === 'ai' ? 'block' : 'none';
+    document.getElementById('paste-section').style.display = mode === 'paste' ? 'block' : 'none';
+    document.getElementById('count').closest('.row2').style.display = mode === 'ai' ? 'grid' : 'none';
+  }
+
+  /* ── 模拟进度演示（展示UI效果用）── */
+  const MOCK = {
+    命运: ["命运会逼着你去走它为你铺好的路","你以为是自己在选择，其实是被选择","那些绕弯路的日子，也是路","某些痛苦，只是在为更大的幸福腾地方","时间不会说谎，它只会慢慢让你明白","所有让你心碎的，最终都会让你心宽","你终究会抵达，只是方式不是你想象的那种"],
+    孤独: ["孤独是一个人和自己在一起的勇气","不是所有的人都能陪你走到最后","某些夜晚，只有自己是自己的港湾","你越长大，越懂得沉默比倾诉更有力","那些独自度过的时光，后来都变成了铠甲","真正的孤独，是在人群中仍感到空旷","学会和自己相处，才是一生最重要的功课"],
+  };
+
+  const steps = [
+    { id:'s1', detail:'id1', msg: t => `文案生成完成：\n1. ${(MOCK[t]||MOCK['命运'])[0]}\n2. ${(MOCK[t]||MOCK['命运'])[1]}\n...` },
+    { id:'s2', detail:'id2', msg: () => '图像描述词生成完成，共 7 条' },
+    { id:'s3', detail:'id3', msg: () => '水墨风画面生成完成，共 7 张' },
+    { id:'s4', detail:'id4', msg: () => '动态视频片段生成完成，共 7 段' },
+    { id:'s5', detail:'id5', msg: () => '磁性男声配音生成完成' },
+    { id:'s6', detail:'id6', msg: () => '✅ 视频合成完毕！' },
+  ];
+
+  function setStep(i, state, msg) {
+    const el = document.getElementById(`s${i}`);
+    const ico = el.querySelector('.s-icon');
+    const det = el.querySelector('.s-detail');
+    el.className = 'step ' + state;
+    ico.textContent = state === 'done' ? '✓' : i;
+    if (msg) det.textContent = msg;
+    document.getElementById('pbar').style.width = Math.round((i / 6) * 100) + '%';
+  }
+
+  async function simulateProgress() {
+    const isPaste = document.getElementById('mode-paste').classList.contains('active');
+    const theme = isPaste ? '自定义文案' : (document.getElementById('theme').value || '命运');
+    const btn = document.querySelector('.btn-gen');
+    btn.disabled = true; btn.textContent = '生成中...';
+
+    document.getElementById('prog-card').style.display = 'block';
+    document.getElementById('res-card').style.display = 'none';
+    document.getElementById('prog-card').scrollIntoView({ behavior: 'smooth' });
+
+    for (let i = 1; i <= 6; i++) {
+      for (let j = 1; j < i; j++) setStep(j, 'done', null);
+      setStep(i, 'active', i === 4 ? '可灵视频生成中，约5-15分钟...' : '处理中...');
+      const delay = i === 4 ? 2200 : (i === 3 ? 1400 : 900);
+      await new Promise(r => setTimeout(r, delay));
+    }
+    for (let j = 1; j <= 6; j++) setStep(j, 'done', null);
+    document.getElementById('d6').textContent = '✅ 视频合成完毕！';
+    document.getElementById('pbar').style.width = '100%';
+
+    showResult(theme);
+    btn.disabled = false; btn.textContent = '再生成一条';
+  }
+
+  function showResult(theme) {
+    const isPaste = document.getElementById('mode-paste').classList.contains('active');
+    let sents;
+    if (isPaste) {
+      const raw = document.getElementById('custom-text').value.trim();
+      sents = raw ? raw.split('\n').map(s => s.trim()).filter(Boolean) : MOCK['命运'];
+    } else {
+      sents = MOCK[theme.split(' · ')[0]] || MOCK['命运'];
+    }
+    const list = document.getElementById('sent-list');
+    list.innerHTML = sents.map((s, i) =>
+      `<div class="sent"><span class="sent-n">0${i+1}</span>${s}</div>`
+    ).join('');
+    document.getElementById('res-card').style.display = 'block';
+    setTimeout(() => document.getElementById('res-card').scrollIntoView({ behavior: 'smooth' }), 100);
+  }
+</script>
+</body>
+</html>
